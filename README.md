@@ -99,5 +99,3 @@ Starts:
 
 Vinothini Kandhasamy
 =======
-# store-intelligence
->>>>>>> fc85c675e62b746f2be5b7613c74d3d8d66fe10a
