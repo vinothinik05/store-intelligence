@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Store Intelligence Dashboard</title>
+
+    <style>
+
+        body{
+            font-family: Arial, sans-serif;
+            background:#f4f6f9;
+            margin:0;
+            padding:20px;
+        }
+
+        h1{
+            text-align:center;
+            color:#333;
+        }
+
+        .container{
+            display:flex;
+            justify-content:center;
+            gap:20px;
+            flex-wrap:wrap;
+            margin-top:30px;
+        }
+
+        .card{
+            width:250px;
+            padding:20px;
+            border-radius:15px;
+            color:white;
+            text-align:center;
+            box-shadow:0px 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .customers{
+            background:#3498db;
+        }
+
+        .loitering{
+            background:#e74c3c;
+        }
+
+        .abandoned{
+            background:#f39c12;
+        }
+
+        .zone{
+            background:#2ecc71;
+        }
+
+        .value{
+            font-size:40px;
+            font-weight:bold;
+            margin-top:10px;
+        }
+
+        table{
+            margin:40px auto;
+            border-collapse:collapse;
+            width:70%;
+            background:white;
+            box-shadow:0px 4px 10px rgba(0,0,0,0.2);
+        }
+
+        table th{
+            background:#34495e;
+            color:white;
+            padding:12px;
+        }
+
+        table td{
+            padding:12px;
+            text-align:center;
+            border:1px solid #ddd;
+        }
+
+        .footer{
+            text-align:center;
+            margin-top:20px;
+            color:gray;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<h1>🏪 Store Intelligence Dashboard</h1>
+
+<div class="container">
+
+    <div class="card customers">
+        <h2>Total Customers</h2>
+        <div class="value" id="customers">0</div>
+    </div>
+
+    <div class="card loitering">
+        <h2>Loitering Alerts</h2>
+        <div class="value" id="loitering">0</div>
+    </div>
+
+    <div class="card abandoned">
+        <h2>Abandoned Objects</h2>
+        <div class="value" id="abandoned">0</div>
+    </div>
+
+    <div class="card zone">
+        <h2>Most Active Zone</h2>
+        <div class="value" id="zone">-</div>
+    </div>
+
+</div>
+
+<table>
+
+    <thead>
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+
+    <tbody id="reportTable">
+    </tbody>
+
+</table>
+
+
+
+<script>
+
+async function loadData(){
+
+    const response = await fetch('/analytics');
+    const data = await response.json();
+
+    const analytics = data.analytics;
+
+    document.getElementById("customers").innerHTML = analytics[1][1];
+    document.getElementById("loitering").innerHTML = analytics[2][1];
+    document.getElementById("abandoned").innerHTML = analytics[3][1];
+    document.getElementById("zone").innerHTML = analytics[4][1];
+
+    let tableHTML = "";
+
+    for(let i=1;i<analytics.length;i++){
+
+        tableHTML += `
+        <tr>
+            <td>${analytics[i][0]}</td>
+            <td>${analytics[i][1]}</td>
+        </tr>
+        `;
+    }
+
+    document.getElementById("reportTable").innerHTML = tableHTML;
+}
+
+loadData();
+
+setInterval(loadData,3000);
+
+</script>
+
+</body>
+</html>
