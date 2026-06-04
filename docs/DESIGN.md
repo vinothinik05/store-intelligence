@@ -1,50 +1,41 @@
 # DESIGN.md
 
-# Store Intelligence System - Architecture Design
+# Store Intelligence System Design
 
-## Overview
+## Architecture Overview
 
-The Store Intelligence System is designed to transform raw CCTV footage into actionable retail analytics. The architecture follows a pipeline-based approach where video feeds are processed, visitor events are generated, analytics are computed, and results are exposed through REST APIs and a live dashboard.
+The Store Intelligence system was designed as a modular pipeline that converts raw CCTV footage into actionable retail analytics.
 
-The system consists of four major layers:
+The architecture consists of four major stages:
 
-1. Detection Layer
-2. Event Stream Layer
-3. Intelligence API Layer
-4. Dashboard Layer
+### 1. Detection Layer
 
----
+The detection layer processes CCTV footage using YOLOv8 and OpenCV.
 
-## Detection Layer
+This layer is responsible for:
 
-The detection layer is responsible for processing CCTV footage and identifying visitors inside the store.
+* Detecting people in video frames
+* Tracking visitors across frames
+* Counting unique visitors
+* Detecting entry and exit events
+* Generating structured behavioral events
+* Producing analytics such as loitering and heatmaps
 
-YOLOv8 was selected as the primary detection model because it provides a strong balance between speed and accuracy. The model detects people from CCTV frames and assigns tracking IDs using the built-in tracking functionality.
+The output of this layer is a stream of structured events stored in CSV format.
 
-The system performs:
+Example events:
 
-* Person detection
-* Visitor tracking
-* Customer counting
-* Entry monitoring
-* Exit monitoring
-* Zone monitoring
-
-Each detected visitor receives a unique tracking identifier which acts as a session token during processing.
-
----
-
-## Event Stream Layer
-
-The event stream layer converts detections into structured events.
-
-Generated events are written into CSV-based event streams.
-
-Example event types include:
-
-* VISITOR_DETECTED
 * ENTRY
 * EXIT
+* VISITOR_DETECTED
+
+These events act as the foundation for downstream analytics.
+
+---
+
+### 2. Event Stream Layer
+
+All detected visitor actions are converted into structured records and stored in event_stream.csv.
 
 Each event contains:
 
@@ -53,19 +44,20 @@ Each event contains:
 * Event Type
 * Zone Information
 
-The event stream acts as the bridge between the computer vision layer and the analytics API.
+This event stream serves as the ingestion source for the Intelligence API.
+
+The design allows future migration from CSV files to message brokers such as Kafka or RabbitMQ without major architectural changes.
 
 ---
 
-## Intelligence API Layer
+### 3. Intelligence API Layer
 
 The Intelligence API is implemented using FastAPI.
 
-The API exposes analytics endpoints that provide real-time information about store activity.
+The API exposes store intelligence through REST endpoints.
 
-Implemented endpoints include:
+Key endpoints include:
 
-* /
 * /health
 * /events
 * /analytics
@@ -75,82 +67,98 @@ Implemented endpoints include:
 * /stores/STORE_001/heatmap
 * /stores/STORE_001/anomalies
 
-The API is containerized using Docker and can be started through docker compose.
+The API reads event data and computes store-level insights.
+
+The design separates detection logic from business intelligence logic, making the system easier to maintain and scale.
 
 ---
 
-## Dashboard Layer
+### 4. Dashboard Layer
 
-The dashboard layer provides a simple visualization interface for store metrics.
+The dashboard provides a simple visualization layer for store metrics.
 
-The dashboard fetches analytics information from API endpoints and displays store activity in a browser.
+It displays:
 
-Metrics displayed include:
+* Visitor counts
+* Conversion metrics
+* Funnel information
+* Heatmap statistics
+* Operational anomalies
 
-* Total Visitors
-* Analytics Reports
-* Event Stream Data
-* Conversion Metrics
-* Heatmap Data
+The dashboard consumes data directly from the API, ensuring a clean separation between presentation and analytics layers.
+
+---
+
+# System Flow
+
+CCTV Video
+
+↓
+
+YOLOv8 Detection & Tracking
+
+↓
+
+Event Generation
+
+↓
+
+event_stream.csv
+
+↓
+
+FastAPI Intelligence Service
+
+↓
+
+Dashboard & Analytics
+
+---
+
+# Scalability Considerations
+
+The current implementation uses CSV files for simplicity and rapid development.
+
+For production deployment, the following improvements can be made:
+
+* PostgreSQL for persistent storage
+* Kafka for event streaming
+* Redis for caching analytics
+* Kubernetes for deployment scaling
+* Multi-camera synchronization
+
+The architecture was intentionally designed so these upgrades can be added without redesigning the entire system.
 
 ---
 
 # AI-Assisted Decisions
 
-Artificial Intelligence tools were used extensively during development.
+AI tools were actively used during the development process.
 
-## Decision 1: Detection Model Selection
+### Decision 1: Detection Model Selection
 
-AI tools suggested multiple detection approaches including YOLOv8, RT-DETR and MediaPipe.
+Several detection models were considered, including YOLOv8 and MediaPipe.
 
-After comparing complexity and implementation speed, YOLOv8 was selected because it provides reliable person detection and integrated tracking support.
+AI-assisted comparisons suggested YOLOv8 due to its balance between speed, accuracy, and ease of integration.
 
-## Decision 2: Event Schema Design
+After testing, YOLOv8 was selected because it provided reliable person detection while maintaining real-time performance.
 
-AI-assisted brainstorming helped define a simple event schema containing timestamps, visitor identifiers and event types.
+### Decision 2: Event Stream Design
 
-The final design was simplified to ensure compatibility with FastAPI endpoints and dashboard reporting.
+AI suggested multiple schema approaches.
 
-## Decision 3: API Architecture
+The final design adopted a simple event-based architecture using structured CSV files because it allowed quick validation and easy debugging.
 
-Several API architectures were considered.
+This approach also keeps the pipeline modular and future-ready for migration to Kafka.
 
-AI tools suggested a microservice-based architecture. However, a single FastAPI service was selected because it reduced complexity and was sufficient for the challenge requirements.
+### Decision 3: API Architecture
 
----
+AI proposed combining analytics directly inside the detection pipeline.
 
-## Deployment Strategy
+This approach was rejected.
 
-The entire application is deployed through Docker Compose.
+Instead, a separate FastAPI service was implemented.
 
-Deployment includes:
+Separating analytics from detection improved maintainability, reduced coupling, and more closely matched production system design patterns.
 
-* FastAPI Service
-* Dashboard
-* Event Processing Components
-
-Running the following command starts the complete system:
-
-docker compose up --build
-
-This approach ensures reproducibility and simplifies evaluation on a clean machine.
-
----
-
-## Future Improvements
-
-Future enhancements may include:
-
-* Cross-camera visitor re-identification
-* Staff identification
-* Real-time event streaming using Kafka
-* PostgreSQL-based storage
-* Advanced anomaly detection
-* Live WebSocket dashboards
-* Multi-store support
-
----
-
-## Conclusion
-
-The Store Intelligence System demonstrates a complete end-to-end retail analytics pipeline. It processes CCTV footage, generates visitor events, computes analytics, exposes APIs, and visualizes results through a dashboard while remaining easy to deploy using Docker.
+In all cases, AI suggestions were reviewed, modified, and validated before integration into the final implementation.
