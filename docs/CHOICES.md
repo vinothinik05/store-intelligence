@@ -1,151 +1,278 @@
 # CHOICES.md
 
-# Key Technical Decisions
+# Engineering Decisions
 
-## Decision 1: Detection Model Selection
+This document explains the major engineering decisions made during the development of the Store Intelligence system.
 
-### Options Considered
+---
+
+# Decision 1: Detection Model Selection
+
+## Options Considered
 
 1. YOLOv8
-2. RT-DETR
-3. MediaPipe
-4. Faster R-CNN
+2. MediaPipe
+3. Haar Cascade
+4. Traditional OpenCV Detection
 
-### AI Suggestion
+## AI Suggestion
 
-AI tools recommended YOLOv8 and RT-DETR because both provide strong object detection performance for retail analytics applications.
+AI-assisted evaluation suggested YOLOv8 because it provides a strong balance between detection accuracy, tracking compatibility, inference speed, and ease of deployment.
 
-RT-DETR offered slightly better accuracy but required additional setup and higher computational resources.
+MediaPipe was more suitable for pose estimation tasks than retail visitor analytics.
 
-### Final Choice
+Traditional OpenCV approaches were lightweight but struggled under varying lighting conditions and crowded scenes.
+
+## Final Choice
 
 YOLOv8
 
-### Why YOLOv8 Was Chosen
+## Why It Was Chosen
 
-YOLOv8 was selected because:
+YOLOv8 was selected because it offers:
 
-* Easy integration
-* Fast inference speed
-* Strong person detection accuracy
-* Built-in tracking support
-* Large community support
-* Suitable for real-time deployment
+* High person detection accuracy
+* Fast inference performance
+* Easy integration with tracking pipelines
+* Real-time CCTV processing capability
+* Strong community support
 
-The challenge focused on delivering a complete pipeline quickly and reliably. YOLOv8 provided the best balance between speed and implementation effort.
+The challenge requires customer detection, visitor counting, tracking, and event generation. YOLOv8 provided the most practical balance between performance and implementation complexity.
 
----
+## Trade-Offs
 
-## Decision 2: Event Schema Design
+Advantages:
 
-### Options Considered
+* High accuracy
+* Real-time performance
+* Easy deployment
+* Reliable retail analytics
 
-1. Complex JSON Event Schema
-2. CSV-based Event Stream
-3. Hybrid JSON + Database Storage
+Disadvantages:
 
-### AI Suggestion
+* Requires GPU for optimal speed
+* Occlusions can affect tracking accuracy
 
-AI tools recommended using a detailed JSON schema with metadata, confidence scores and session tracking information.
-
-### Final Choice
-
-CSV Event Stream with Structured Fields
-
-### Why This Choice Was Made
-
-The challenge required structured events that could be consumed by the analytics layer.
-
-The selected schema contains:
-
-* Timestamp
-* Visitor ID
-* Event Type
-* Zone
-
-Benefits:
-
-* Easy debugging
-* Human-readable format
-* Lightweight storage
-* Fast integration with FastAPI
-
-The design remains flexible and can later be upgraded to a full event streaming platform such as Kafka.
+Despite these limitations, YOLOv8 was the best choice for the challenge timeline and requirements.
 
 ---
 
-## Decision 3: API Architecture
+# Decision 2: Event Schema Design
 
-### Options Considered
+## Options Considered
 
-1. FastAPI Monolith
-2. Microservices Architecture
-3. Serverless Functions
+1. Simple CSV Event Schema
+2. JSON Event Schema
+3. Database-First Schema
+4. Kafka Style Event Streaming Schema
 
-### AI Suggestion
+## AI Suggestion
 
-AI-generated recommendations proposed a microservices architecture because it scales well across multiple stores.
+AI recommended building the system around structured events instead of storing only aggregated metrics.
 
-### Final Choice
+The suggestion was based on event-driven architecture principles where detection, analytics, and visualization remain independent components.
 
-FastAPI Monolith
+## Final Choice
 
-### Why This Choice Was Made
+Structured CSV Event Stream
 
-For the challenge scope, a monolithic FastAPI application provided several advantages:
+Schema:
 
-* Faster development
-* Simpler deployment
-* Easier debugging
-* Lower operational complexity
+```text
+timestamp,visitor_id,event_type,zone
+```
 
-All analytics endpoints remain within a single service.
+Example:
 
-Implemented endpoints include:
+```text
+2026-06-03 11:29:45,1,VISITOR_DETECTED,Store Area
+2026-06-03 11:30:12,3,ENTRY,Main Door
+2026-06-03 11:31:05,3,EXIT,Main Door
+```
 
-* /health
-* /events
-* /analytics
-* /dashboard
-* /stores/STORE_001/metrics
-* /stores/STORE_001/funnel
-* /stores/STORE_001/heatmap
-* /stores/STORE_001/anomalies
+## Why It Was Chosen
+
+The detection layer and intelligence layer were intentionally separated through an event stream.
+
+Each field serves a specific purpose:
+
+### timestamp
+
+Used for:
+
+* Traffic analysis
+* Visitor trends
+* Time-based analytics
+* Event ordering
+
+### visitor_id
+
+Used for:
+
+* Unique visitor counting
+* Session tracking
+* Analytics calculations
+
+### event_type
+
+Represents visitor actions:
+
+* ENTRY
+* EXIT
+* VISITOR_DETECTED
+
+This enables funnel and visitor flow analysis.
+
+### zone
+
+Identifies where the event occurred.
+
+Examples:
+
+* Main Door
+* Store Area
+* Billing Area
+
+This enables future heatmap and zone analytics.
+
+## Analytics Supported By This Schema
+
+The schema allows the API to calculate:
+
+* Total visitors
+* Unique visitors
+* Visitor flow
+* Entry counts
+* Exit counts
+* Zone statistics
+* Traffic analytics
+* Dashboard metrics
+
+## Alternative Designs Considered
+
+### JSON Schema
+
+Example:
+
+```json
+{
+  "event_id": "uuid",
+  "store_id": "STORE_001",
+  "camera_id": "CAM_2",
+  "visitor_id": "VIS_001",
+  "event_type": "ENTRY",
+  "timestamp": "2026-06-03T11:29:45Z",
+  "zone": "Main Door",
+  "confidence": 0.92
+}
+```
+
+This approach is more production-ready but increases implementation complexity.
+
+### Database-First Design
+
+Events would be written directly into a relational database.
+
+This was rejected because it added setup complexity and slowed development.
+
+## Future Improvements
+
+For a production deployment the schema would be extended with:
+
+* event_id
+* store_id
+* camera_id
+* confidence
+* dwell_time
+* is_staff
+* session_id
+* metadata
+
+These fields would support:
+
+* Cross-camera tracking
+* Staff exclusion
+* Re-entry detection
+* Confidence-based analytics
+* Advanced behavioral analysis
+
+The current schema was chosen because it satisfies challenge requirements while remaining simple, transparent, and easy to validate.
 
 ---
 
-## AI Feedback That Was Overridden
+# Decision 3: API Architecture Choice
 
-AI tools suggested implementing:
+## Options Considered
 
-* Kafka event streaming
-* PostgreSQL storage
-* Multi-service architecture
+1. Flask
+2. FastAPI
+3. Django REST Framework
+4. Analytics Without API Layer
 
-These ideas were useful but considered excessive for the challenge timeline.
+## AI Suggestion
 
-Instead, a simpler architecture was chosen that could still demonstrate:
+AI suggested FastAPI because of:
 
-* Detection
-* Tracking
-* Event generation
-* Analytics computation
-* Dashboard visualization
+* Automatic API documentation
+* Strong typing support
+* Excellent performance
+* Modern architecture
+* Minimal boilerplate
 
-while remaining easy to run using Docker Compose.
+## Final Choice
+
+FastAPI
+
+## Why It Was Chosen
+
+The challenge requires a queryable intelligence layer.
+
+FastAPI enabled rapid implementation of:
+
+* Health endpoint
+* Events endpoint
+* Analytics endpoint
+* Metrics endpoint
+* Funnel endpoint
+* Heatmap endpoint
+* Anomaly endpoint
+* Dashboard integration
+
+Automatic Swagger documentation available at:
+
+```text
+/docs
+```
+
+was also a significant advantage.
+
+## Trade-Offs
+
+Advantages:
+
+* High performance
+* Excellent developer experience
+* Automatic documentation
+* Easy Docker deployment
+* Production-friendly structure
+
+Disadvantages:
+
+* Smaller ecosystem than Django
+* Requires additional infrastructure for very large deployments
+
+For the challenge scope, FastAPI provided the fastest path to a complete and maintainable solution.
 
 ---
 
-## Lessons Learned
+# Conclusion
 
-During development, AI tools accelerated:
+The final Store Intelligence architecture combines:
 
-* Code generation
-* API development
-* Docker configuration
-* Event schema design
-* Analytics endpoint creation
+* YOLOv8 for customer detection and tracking
+* Structured event streams for analytics ingestion
+* FastAPI for intelligence APIs and dashboard integration
 
-However, final architectural decisions were made manually after evaluating complexity, implementation time and challenge requirements.
+AI tools were used to evaluate alternatives, compare design trade-offs, generate initial implementation ideas, and accelerate development.
 
-The result is a practical end-to-end retail analytics platform that balances functionality, maintainability and deployment simplicity.
+However, all final decisions were reviewed against project requirements and validated through implementation and testing before being adopted in the final system.
